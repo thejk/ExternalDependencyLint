@@ -1,0 +1,67 @@
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion 29
+    buildToolsVersion '29.0.3'
+
+    defaultConfig {
+        minSdkVersion 19
+        targetSdkVersion 29
+    }
+
+    flavorDimensions 'release'
+
+    productFlavors {
+        beta {
+            dimension 'release'
+        }
+        'final' {
+            dimension 'release'
+        }
+    }
+}
+
+dependencies {
+    betaApi files('../external/beta.jar') {
+        builtBy 'buildExternalBeta'
+    }
+    finalApi files('../external/final.jar') {
+        builtBy 'buildExternalFinal'
+    }
+}
+
+class BuildExternalTask extends DefaultTask {
+    @Input
+    String release
+
+    BuildExternalTask() {
+        // Always run task
+        outputs.upToDateWhen { false }
+    }
+
+    // This is obviously a lot more complicated in real life, but this simulates an external build
+    @TaskAction
+    public void run() {
+        def baseDir = project.file('../external')
+        def output = "${release}.jar"
+        new File(baseDir, 'build').mkdirs()
+        project.exec {
+            args '-d', 'build', 'External.java'
+            executable 'javac'
+            workingDir baseDir
+        }
+        project.exec {
+            args 'cf', output, '-C', 'build', 'org/the_jk/externaldependency/External.class'
+            executable 'jar'
+            workingDir baseDir
+        }
+    }
+}
+
+task buildExternalBeta(type: BuildExternalTask) {
+    release 'beta'
+}
+
+task buildExternalFinal(type: BuildExternalTask) {
+    release 'final'
+}
